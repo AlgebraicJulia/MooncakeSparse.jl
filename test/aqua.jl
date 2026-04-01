@@ -1,3 +1,3 @@
 using Aqua, MooncakeSparse 
 
-Aqua.test_all(MooncakeSparse, ambiguities=false,)
+Aqua.test_all(MooncakeSparse; piracies=false)
