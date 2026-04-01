@@ -87,7 +87,7 @@ function dot_rev_impl!!(cdx, cdA, cdy)
     function pullback!!(Δz)
         axpy!(Δz, Ay, dx)
         axpy!(Δz, Ax, dy)
-        selupd!(dA, x, y', Δz, 1)
+        selupd!(dA, x, y', Δz, true)
         return NoRData(), NoRData(), NoRData(), NoRData()
     end
 

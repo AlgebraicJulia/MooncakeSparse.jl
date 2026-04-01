@@ -82,7 +82,7 @@ end
 # The update is only applied to the structural nonzeros of C.
 function selupd!(C::HermSparse, A::AbstractVecOrMat, B::AbstractVecOrMat, α, β)
     selupd!(parent(C), C.uplo,         A,          B,       α  / 2, β)
-    selupd!(parent(C), C.uplo, adjoint(B), adjoint(A), conj(α) / 2, 1)
+    selupd!(parent(C), C.uplo, adjoint(B), adjoint(A), conj(α) / 2, true)
     return C
 end
 
@@ -98,7 +98,7 @@ end
 # The update is only applied to the structural nonzeros of C.
 function selupd!(C::SymSparse, A::AbstractVecOrMat, B::AbstractVecOrMat, α, β)
     selupd!(parent(C), C.uplo,           A,            B,  α / 2, β)
-    selupd!(parent(C), C.uplo, transpose(B), transpose(A), α / 2, 1)
+    selupd!(parent(C), C.uplo, transpose(B), transpose(A), α / 2, true)
     return C
 end
 
@@ -218,7 +218,8 @@ function selupd_impl!(C::SparseMatrixCSC, A::AbstractMatrix, B::AbstractMatrix, 
         else
             Bk = view(B, :, k)
         end
-        selupd_impl!(C, Ak, Bk, α, 1, tA, cA, tB, cB)
+
+        selupd_impl!(C, Ak, Bk, α, true, tA, cA, tB, cB)
     end
 
     return C
@@ -301,7 +302,8 @@ function selupd_impl!(C::SparseMatrixCSC, uplo::Char, A::AbstractMatrix, B::Abst
         else
             Bk = view(B, :, k)
         end
-        selupd_impl!(C, uplo, Ak, Bk, α, 1, tA, cA, tB, cB)
+
+        selupd_impl!(C, uplo, Ak, Bk, α, true, tA, cA, tB, cB)
     end
 
     return C
