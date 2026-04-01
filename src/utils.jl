@@ -53,26 +53,32 @@ function primaltangent(x::Dual{<:AbstractArray})
     return (X, toarray(X, dX))
 end
 
-function unwrap(A::AbstractArray)
-    if A isa Adjoint
-        B = parent(A)
+function tflip(::Val{:N})
+    return Val(:T)
+end
 
-        if B isa Transpose
-            return (parent(B), Val(:N), Val(:C))
-        else
-            return (B, Val(:T), Val(:C))
-        end
-    elseif A isa Transpose
-        B = parent(A)
+function tflip(::Val{:T})
+    return Val(:N)
+end
 
-        if B isa Adjoint
-            return (parent(B), Val(:N), Val(:C))
-        else
-            return (B, Val(:T), Val(:N))
-        end
-    else
-        return (A, Val(:N), Val(:N))
-    end
+function cflip(::Val{:N})
+    return Val(:C)
+end
+
+function cflip(::Val{:C})
+    return Val(:N)
+end
+
+function unwrap(A::AbstractArray, tA::Val=Val(:N), cA::Val=Val(:N))
+    return A, tA, cA
+end
+
+function unwrap(A::Transpose, tA::Val, cA::Val)
+    return unwrap(transpose(A), tflip(tA), cA)
+end
+
+function unwrap(A::Adjoint, tA::Val, cA::Val)
+    return unwrap(A', tflip(tA), cflip(cA))
 end
 
 # SELected UPDate: compute the selected low-rank update
