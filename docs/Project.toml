@@ -1,4 +1,4 @@
 [deps]
-AlgebraicTemplate = "b66562e1-fa90-4e8b-9505-c909188fab76"
+MooncakeSparse = "85e08d05-c593-4d83-8d7e-0e912d511203"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"

@@ -1,9 +1,9 @@
-# AlgebraicTemplate.jl
+# MooncakeSparse.jl
 
-[![Stable Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://AlgebraicJulia.github.io/AlgebraicTemplate.jl/stable)
-[![Development Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://AlgebraicJulia.github.io/AlgebraicTemplate.jl/dev)
-[![Code Coverage](https://codecov.io/gh/AlgebraicJulia/AlgebraicTemplate.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/AlgebraicJulia/AlgebraicTemplate.jl)
-[![CI/CD](https://github.com/AlgebraicJulia/AlgebraicTemplate.jl/actions/workflows/julia_ci.yml/badge.svg)](https://github.com/AlgebraicJulia/AlgebraicTemplate.jl/actions/workflows/julia_ci.yml)
+[![Stable Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://AlgebraicJulia.github.io/MooncakeSparse.jl/stable)
+[![Development Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://AlgebraicJulia.github.io/MooncakeSparse.jl/dev)
+[![Code Coverage](https://codecov.io/gh/AlgebraicJulia/MooncakeSparse.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/AlgebraicJulia/MooncakeSparse.jl)
+[![CI/CD](https://github.com/AlgebraicJulia/MooncakeSparse.jl/actions/workflows/julia_ci.yml/badge.svg)](https://github.com/AlgebraicJulia/MooncakeSparse.jl/actions/workflows/julia_ci.yml)
 
 A template repository for making a new AlgebraicJulia package.
 

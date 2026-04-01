@@ -1,7 +1,7 @@
-# AlgebraicTemplate.jl
+# MooncakeSparse.jl
 
 ```@meta
-CurrentModule = AlgebraicTemplate
+CurrentModule = MooncakeSparse
 ```
 
-`AlgebraicTemplate.jl` is a Julia library for...
+`MooncakeSparse.jl` is a Julia library for...
