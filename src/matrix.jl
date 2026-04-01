@@ -29,11 +29,8 @@ function dot_fwd_impl!!(cdx, cdA, cdy)
     A, dA = primaltangent(cdA)
     y, dy = primaltangent(cdy)
 
-    Ay = A * y
-    Ax = A' * x
-
-    z = dot(x, Ay)
-    dz = dot(dx, Ay) + dot(x, dA, y) + dot(Ax, dy)
+    z = dot(x, A, y)
+    dz = dot(dx, A, y) + dot(x, dA, y) + dot(x, A, dy)
 
     return Dual(z, dz)
 end
