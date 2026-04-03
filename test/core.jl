@@ -77,11 +77,24 @@ p = 0.3
                 end
             end
 
-            @testset "dot" begin
+            @testset "dot (3-arg)" begin
                 for A in (AU, AU', transpose(AU), transpose(AU)', AH, AS, transpose(AH), AS')
                     @test testadjoint((x, A, y) -> real(dot(x, A, y)), x, A, y)
+                end
+            end
+
+            @testset "dot (2-arg)" begin
+                BU = sprandn(T, n, n, p)
+                BH = Hermitian(BU, :L)
+                BS = Symmetric(BU, :L)
+
+                for L in (AU, AU', transpose(AU), AH, AS)
+                    for R in (AU, AU', transpose(AU), AH, AS)
+                        @test testadjoint((L, R) -> real(dot(L, R)), L, R)
+                    end
                 end
             end
         end
     end
 end
+

@@ -35,6 +35,16 @@ function dot_fwd_impl!!(cdx, cdA, cdy)
     return Dual(z, dz)
 end
 
+function dot_fwd_impl!!(cdA, cdB)
+    A, dA = primaltangent(cdA)
+    B, dB = primaltangent(cdB)
+
+    z = dot(A, B)
+    dz = dot(dA, B) + dot(A, dB)
+
+    return Dual(z, dz)
+end
+
 function lmul_rev_impl!!(cdC, cdA, cdB)
     C, dC = primaltangent(cdC)
     A, dA = primaltangent(cdA)
@@ -94,6 +104,21 @@ function dot_rev_impl!!(cdx, cdA, cdy)
     return CoDual(z, NoFData()), pullback!!
 end
 
+function dot_rev_impl!!(cdA, cdB)
+    A, dA = primaltangent(cdA)
+    B, dB = primaltangent(cdB)
+
+    z = dot(A, B)
+
+    function pullback!!(Δz)
+        selaxpby!(conj(Δz), B, true, dA)
+        selaxpby!(     Δz,  A, true, dB)
+        return NoRData(), NoRData(), NoRData()
+    end
+
+    return CoDual(z, NoFData()), pullback!!
+end
+
 for ST in (SparseMatrixCSC, AdjSparse, TransSparse, ConjSparse)
     @eval @is_primitive MinimalCtx Tuple{typeof(mul!), DenseVecOrMat{T}, $ST{T, I}, DenseVecOrMat{T}} where {T, I}
     @eval Mooncake.frule!!(::Dual{typeof(mul!)}, cdC::Dual{<:DenseVecOrMat}, cdA::Dual{<:$ST}, cdB::Dual{<:DenseVecOrMat}) = lmul_fwd_impl!!(cdC, cdA, cdB)
@@ -106,4 +131,12 @@ for ST in (SparseMatrixCSC, AdjSparse, TransSparse, ConjSparse)
     @eval @is_primitive MinimalCtx Tuple{typeof(dot), StridedVector{T}, $ST{T, I}, StridedVector{T}} where {T, I}
     @eval Mooncake.frule!!(::Dual{typeof(dot)}, cdx::Dual{<:StridedVector}, cdA::Dual{<:$ST}, cdy::Dual{<:StridedVector}) = dot_fwd_impl!!(cdx, cdA, cdy)
     @eval Mooncake.rrule!!(::CoDual{typeof(dot)}, cdx::CoDual{<:StridedVector}, cdA::CoDual{<:$ST}, cdy::CoDual{<:StridedVector}) = dot_rev_impl!!(cdx, cdA, cdy)
+end
+
+for SL in (SparseMatrixCSC, AdjSparse, TransSparse, HermSparse, SymSparse)
+    for SR in (SparseMatrixCSC, AdjSparse, TransSparse, HermSparse, SymSparse)
+        @eval @is_primitive MinimalCtx Tuple{typeof(dot), $SL{T, I}, $SR{T, I}} where {T, I}
+        @eval Mooncake.frule!!(::Dual{typeof(dot)}, cdA::Dual{<:$SL}, cdB::Dual{<:$SR}) = dot_fwd_impl!!(cdA, cdB)
+        @eval Mooncake.rrule!!(::CoDual{typeof(dot)}, cdA::CoDual{<:$SL}, cdB::CoDual{<:$SR}) = dot_rev_impl!!(cdA, cdB)
+    end
 end

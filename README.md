@@ -5,4 +5,5 @@ A sparse-matrix extension for the automatic differentiation library [Mooncake.jl
 ## Supported Operations
 
 - `mul!(C, A, B)`
+- `dot(A, B)`
 - `dot(x, A, y)`
