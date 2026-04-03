@@ -90,13 +90,11 @@ function dot_rev_impl!!(cdx, cdA, cdy)
     A, dA = primaltangent(cdA)
     y, dy = primaltangent(cdy)
 
-    Ay = A * y
-    Ax = A' * x
-    z = dot(x, Ay)
+    z = dot(x, A, y)
 
     function pullback!!(Δz)
-        axpy!(Δz, Ay, dx)
-        axpy!(Δz, Ax, dy)
+        mul!(dx, A,  y, Δz, true)
+        mul!(dy, A', x, Δz, true)
         selupd!(dA, x, y', Δz, true)
         return NoRData(), NoRData(), NoRData(), NoRData()
     end
