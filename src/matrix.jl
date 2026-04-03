@@ -131,8 +131,8 @@ for ST in (SparseMatrixCSC, AdjSparse, TransSparse, ConjSparse)
     @eval Mooncake.rrule!!(::CoDual{typeof(dot)}, cdx::CoDual{<:StridedVector}, cdA::CoDual{<:$ST}, cdy::CoDual{<:StridedVector}) = dot_rev_impl!!(cdx, cdA, cdy)
 end
 
-for SL in (SparseMatrixCSC, AdjSparse, TransSparse, HermSparse, SymSparse)
-    for SR in (SparseMatrixCSC, AdjSparse, TransSparse, HermSparse, SymSparse)
+for SL in (SparseMatrixCSC, AdjSparse, TransSparse, ConjSparse, HermSparse, SymSparse, ConjHermSparse, ConjSymSparse)
+    for SR in (SparseMatrixCSC, AdjSparse, TransSparse, ConjSparse, HermSparse, SymSparse, ConjHermSparse, ConjSymSparse)
         @eval @is_primitive MinimalCtx Tuple{typeof(dot), $SL{T, I}, $SR{T, I}} where {T, I}
         @eval Mooncake.frule!!(::Dual{typeof(dot)}, cdA::Dual{<:$SL}, cdB::Dual{<:$SR}) = dot_fwd_impl!!(cdA, cdB)
         @eval Mooncake.rrule!!(::CoDual{typeof(dot)}, cdA::CoDual{<:$SL}, cdB::CoDual{<:$SR}) = dot_rev_impl!!(cdA, cdB)
