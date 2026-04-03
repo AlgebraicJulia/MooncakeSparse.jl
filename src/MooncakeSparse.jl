@@ -1,5 +1,7 @@
 module MooncakeSparse
 
+export toarray
+
 using LinearAlgebra
 using LinearAlgebra: Hermitian, Symmetric, Adjoint, Transpose, AdjOrTrans, rmul!, dot, axpy!, axpby!, mul!
 
@@ -8,7 +10,8 @@ using SparseArrays: SparseMatrixCSC, nzrange, rowvals, getcolptr, nonzeros
 
 using Mooncake
 using Mooncake: @is_primitive, MinimalCtx, CoDual, Dual, NoRData, NoFData, primal, tangent,
-                Tangent, FData
+                Tangent, FData, FriendlyTangentCache, AsCustomised,
+                friendly_tangent_cache, tangent_to_friendly_internal!!
 
 const HermSparse{T, I} = Hermitian{T, SparseMatrixCSC{T, I}}
 const SymSparse{T, I} = Symmetric{T, SparseMatrixCSC{T, I}}
@@ -32,6 +35,7 @@ const DenseMatrix{T} = Union{StridedMatrix{T}, AdjOrTrans{T, <:StridedVecOrMat{T
 const DenseVecOrMat{T} = Union{DenseMatrix{T}, StridedVector{T}}
 
 include("utils.jl")
+include("friendly.jl")
 include("symmetric.jl")
 include("matrix.jl")
 

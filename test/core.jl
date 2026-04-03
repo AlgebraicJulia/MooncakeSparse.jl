@@ -1,6 +1,8 @@
 using MooncakeSparse
+using MooncakeSparse: toarray
 using Mooncake: Config, prepare_derivative_cache, prepare_gradient_cache,
-                zero_tangent, value_and_derivative!!, value_and_gradient!!
+                zero_tangent, value_and_derivative!!, value_and_gradient!!,
+                Tangent
 using LinearAlgebra
 using SparseArrays
 using SparseArrays: nonzeros
@@ -33,6 +35,13 @@ function randtangent!(A::Union{Hermitian,Symmetric})
     return A
 end
 
+function maybefriendly(x, g)
+    if g isa Tangent
+        return toarray(x, g)
+    end
+    return g
+end
+
 function testadjoint(f, args...; rtol=1e-4)
     config = Config(friendly_tangents=true)
 
@@ -45,7 +54,8 @@ function testadjoint(f, args...; rtol=1e-4)
     rev_cache = prepare_gradient_cache(f, args...; config)
     _, (_, gradients...) = value_and_gradient!!(rev_cache, f, args...)
 
-    return isapprox(dy, sum(real ∘ splat(dot), zip(gradients, tangents)); rtol)
+    arrays = map(maybefriendly, args, gradients)
+    return isapprox(dy, sum(real ∘ splat(dot), zip(arrays, tangents)); rtol)
 end
 
 n = 100
