@@ -1,5 +1,13 @@
 function tangentdata(x::Tangent)
-    return x.fields
+    return tangentdata(x.fields)
+end
+
+function tangentdata(x::NamedTuple{(:fields,)})
+    return tangentdata(x.fields)
+end
+
+function tangentdata(x::NamedTuple)
+    return x
 end
 
 function tangentdata(x::FData)

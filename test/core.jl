@@ -7,6 +7,7 @@ using LinearAlgebra
 using SparseArrays
 using SparseArrays: nonzeros
 using Random: randn!
+using Test
 
 function randtangent(A)
     dA = copy(A)
@@ -65,7 +66,7 @@ p = 0.3
 @testset "Adjoint Consistency" begin
     for T in (Float64, ComplexF64)
         @testset "$T" begin
-            AU = sprandn(T, n, n, p)
+            AU = sprandn(T, n, n, p) + n * I
             AH = Hermitian(AU, :L)
             AS = Symmetric(AU, :L)
 
@@ -104,6 +105,16 @@ p = 0.3
                     end
                 end
             end
+
+            @testset "ldivwith" begin
+                for A in (AU, AH, AS), R in (Y, y)
+                    @test testadjoint((A, R) -> real(sum(ldivwith(A, lu(Matrix(A)), R))), A, R)
+                end
+            end
+
+            # rdivwith tests disabled due to Julia stdlib bug:
+            # mul!(C, Y, Hermitian{SparseMatrixCSC}) ignores the Hermitian wrapper
+            # https://github.com/JuliaSparse/SparseArrays.jl/issues/688
         end
     end
 end

@@ -1,3 +1,45 @@
+function ldivwith!(A::AbstractMatrix, F, X::AbstractVecOrMat)
+    ldiv!(F, X)
+    return X
+end
+
+function ldivwith!(Y::AbstractVecOrMat, A::AbstractMatrix, F, X::AbstractVecOrMat)
+    copyto!(Y, X)
+    ldivwith!(A, F, Y)
+    return Y
+end
+
+"""
+    ldivwith(A, F, B)
+
+Solve AX = B using a factorization F.
+"""
+function ldivwith(A::AbstractMatrix, F, X::AbstractVecOrMat)
+    Y = similar(X, promote_type(eltype(F), eltype(X)))
+    return ldivwith!(Y, A, F, X)
+end
+
+"""
+    rdivwith(B, A, F)
+
+Solve XA = B using a factorization F.
+"""
+function rdivwith!(X::AbstractMatrix, A::AbstractMatrix, F)
+    rdiv!(X, F)
+    return X
+end
+
+function rdivwith!(Y::AbstractMatrix, X::AbstractMatrix, A::AbstractMatrix, F)
+    copyto!(Y, X)
+    rdivwith!(Y, A, F)
+    return Y
+end
+
+function rdivwith(X::AbstractMatrix, A::AbstractMatrix, F)
+    Y = similar(X, promote_type(eltype(F), eltype(X)))
+    return rdivwith!(Y, X, A, F)
+end
+
 function lmul_fwd_impl!!(cdC, cdA, cdB)
     C, dC = primaltangent(cdC)
     A, dA = primaltangent(cdA)
@@ -117,24 +159,63 @@ function dot_rev_impl!!(cdA, cdB)
     return CoDual(z, NoFData()), pullback!!
 end
 
-for ST in (SparseMatrixCSC, AdjSparse, TransSparse, ConjSparse)
-    @eval @is_primitive MinimalCtx Tuple{typeof(mul!), DenseVecOrMat{T}, $ST{T, I}, DenseVecOrMat{T}} where {T, I}
-    @eval Mooncake.frule!!(::Dual{typeof(mul!)}, cdC::Dual{<:DenseVecOrMat}, cdA::Dual{<:$ST}, cdB::Dual{<:DenseVecOrMat}) = lmul_fwd_impl!!(cdC, cdA, cdB)
-    @eval Mooncake.rrule!!(::CoDual{typeof(mul!)}, cdC::CoDual{<:DenseVecOrMat}, cdA::CoDual{<:$ST}, cdB::CoDual{<:DenseVecOrMat}) = lmul_rev_impl!!(cdC, cdA, cdB)
+function ldiv_fwd_impl!!(cdA, cdF, cdX)
+    A, dA = primaltangent(cdA)
+    X, dX = primaltangent(cdX)
+    F = primal(cdF)
 
-    @eval @is_primitive MinimalCtx Tuple{typeof(mul!), DenseMatrix{T}, DenseMatrix{T}, $ST{T, I}} where {T, I}
-    @eval Mooncake.frule!!(::Dual{typeof(mul!)}, cdC::Dual{<:DenseMatrix}, cdA::Dual{<:DenseMatrix}, cdB::Dual{<:$ST}) = rmul_fwd_impl!!(cdC, cdA, cdB)
-    @eval Mooncake.rrule!!(::CoDual{typeof(mul!)}, cdC::CoDual{<:DenseMatrix}, cdA::CoDual{<:DenseMatrix}, cdB::CoDual{<:$ST}) = rmul_rev_impl!!(cdC, cdA, cdB)
+    ldivwith!(A, F, X)
+    mul!(dX, dA, X, -1, true)
+    ldivwith!(A, F, dX)
 
-    @eval @is_primitive MinimalCtx Tuple{typeof(dot), StridedVector{T}, $ST{T, I}, StridedVector{T}} where {T, I}
-    @eval Mooncake.frule!!(::Dual{typeof(dot)}, cdx::Dual{<:StridedVector}, cdA::Dual{<:$ST}, cdy::Dual{<:StridedVector}) = dot_fwd_impl!!(cdx, cdA, cdy)
-    @eval Mooncake.rrule!!(::CoDual{typeof(dot)}, cdx::CoDual{<:StridedVector}, cdA::CoDual{<:$ST}, cdy::CoDual{<:StridedVector}) = dot_rev_impl!!(cdx, cdA, cdy)
+    return cdX
 end
 
-for SL in (SparseMatrixCSC, AdjSparse, TransSparse, ConjSparse, HermSparse, SymSparse, ConjHermSparse, ConjSymSparse)
-    for SR in (SparseMatrixCSC, AdjSparse, TransSparse, ConjSparse, HermSparse, SymSparse, ConjHermSparse, ConjSymSparse)
-        @eval @is_primitive MinimalCtx Tuple{typeof(dot), $SL{T, I}, $SR{T, I}} where {T, I}
-        @eval Mooncake.frule!!(::Dual{typeof(dot)}, cdA::Dual{<:$SL}, cdB::Dual{<:$SR}) = dot_fwd_impl!!(cdA, cdB)
-        @eval Mooncake.rrule!!(::CoDual{typeof(dot)}, cdA::CoDual{<:$SL}, cdB::CoDual{<:$SR}) = dot_rev_impl!!(cdA, cdB)
+function ldiv_rev_impl!!(cdA, cdF, cdX)
+    A, dA = primaltangent(cdA)
+    X, dX = primaltangent(cdX)
+    F = primal(cdF)
+    Y = copy(X)
+
+    ldivwith!(A, F, X)
+
+    function pullback!!(::NoRData)
+        ldivwith!(A', F', dX)
+        selupd!(dA, dX, X', -1, true)
+        copyto!(X, Y)
+        return NoRData(), NoRData(), zero_rdata(F), NoRData()
     end
+
+    return cdX, pullback!!
 end
+
+function rdiv_fwd_impl!!(cdX, cdA, cdF)
+    X, dX = primaltangent(cdX)
+    A, dA = primaltangent(cdA)
+    F = primal(cdF)
+
+    rdivwith!(X, A, F)
+    mul!(dX, X, dA, -1, true)
+    rdivwith!(dX, A, F)
+
+    return cdX
+end
+
+function rdiv_rev_impl!!(cdX, cdA, cdF)
+    X, dX = primaltangent(cdX)
+    A, dA = primaltangent(cdA)
+    F = primal(cdF)
+    Y = copy(X)
+
+    rdivwith!(X, A, F)
+
+    function pullback!!(::NoRData)
+        rdivwith!(dX, A', F')
+        selupd!(dA, X', dX, -1, true)
+        copyto!(X, Y)
+        return NoRData(), NoRData(), zero_rdata(F), NoRData()
+    end
+
+    return cdX, pullback!!
+end
+
