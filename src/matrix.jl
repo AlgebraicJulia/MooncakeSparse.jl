@@ -77,16 +77,6 @@ function dot_fwd_impl!!(cdx, cdA, cdy)
     return Dual(z, dz)
 end
 
-function dot_fwd_impl!!(cdA, cdB)
-    A, dA = primaltangent(cdA)
-    B, dB = primaltangent(cdB)
-
-    z = dot(A, B)
-    dz = dot(dA, B) + dot(A, dB)
-
-    return Dual(z, dz)
-end
-
 function lmul_rev_impl!!(cdC, cdA, cdB)
     C, dC = primaltangent(cdC)
     A, dA = primaltangent(cdA)
@@ -139,21 +129,6 @@ function dot_rev_impl!!(cdx, cdA, cdy)
         mul!(dy, A', x, Δz, true)
         selupd!(dA, x, y', Δz, true)
         return NoRData(), NoRData(), NoRData(), NoRData()
-    end
-
-    return CoDual(z, NoFData()), pullback!!
-end
-
-function dot_rev_impl!!(cdA, cdB)
-    A, dA = primaltangent(cdA)
-    B, dB = primaltangent(cdB)
-
-    z = dot(A, B)
-
-    function pullback!!(Δz)
-        selaxpby!(conj(Δz), B, true, dA)
-        selaxpby!(     Δz,  A, true, dB)
-        return NoRData(), NoRData(), NoRData()
     end
 
     return CoDual(z, NoFData()), pullback!!

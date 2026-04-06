@@ -89,36 +89,28 @@ function unwrap(A::Adjoint, tA::Val, cA::Val)
     return unwrap(A', tflip(tA), cflip(cA))
 end
 
-function unwrapsym(A::SymSparse)
-    return parent(A), Val(:N), Val(:N), A.uplo
-end
-
-function unwrapsym(A::HermSparse)
-    return parent(A), Val(:C), Val(:N), A.uplo
-end
-
-function unwrapsym(A::ConjSymSparse)
-    S = parent(A)
-    return parent(S), Val(:N), Val(:C), S.uplo
-end
-
-function unwrapsym(A::ConjHermSparse)
-    H = parent(A)
-    return parent(H), Val(:C), Val(:C), H.uplo
-end
-
 function intriangle(uplo, i::Integer, j::Integer)
     return isnothing(uplo) || (uplo == 'L' && i >= j) || (uplo == 'U' && i <= j)
 end
 
+# SCaLe DIAgonal: scale diagonal entries by α
+function scldia!(A::SparseMatrixCSC, α)
+    for i in diagind(A)
+        A[i] *= α
+    end
+
+    return A
+end
+
 # SELected UPDate: compute the selected low-rank update
 #
-#   C ← (α/2) A B + (conj(α)/2) Bᴴ Aᴴ + β C
+#   C ← α A B + conj(α) Bᴴ Aᴴ + β C
 #
 # The update is only applied to the structural nonzeros of C.
 function selupd!(C::HermSparse, A::AbstractVecOrMat, B::AbstractVecOrMat, α, β)
-    selupd!(parent(C), C.uplo,         A,          B,       α  / 2, β)
-    selupd!(parent(C), C.uplo, adjoint(B), adjoint(A), conj(α) / 2, true)
+    selupd!(parent(C), C.uplo,         A,          B,       α, β)
+    selupd!(parent(C), C.uplo, adjoint(B), adjoint(A), conj(α), true)
+    scldia!(parent(C), 1 / 2)
     return C
 end
 
@@ -129,12 +121,13 @@ end
 
 # SELected UPDate: compute the selected low-rank update
 #
-#   C ← (α/2) A B + (α/2) Bᵀ Aᵀ + β C
+#   C ← α A B + α Bᵀ Aᵀ + β C
 #
 # The update is only applied to the structural nonzeros of C.
 function selupd!(C::SymSparse, A::AbstractVecOrMat, B::AbstractVecOrMat, α, β)
-    selupd!(parent(C), C.uplo,           A,            B,  α / 2, β)
-    selupd!(parent(C), C.uplo, transpose(B), transpose(A), α / 2, true)
+    selupd!(parent(C), C.uplo,           A,            B,  α, β)
+    selupd!(parent(C), C.uplo, transpose(B), transpose(A), α, true)
+    scldia!(parent(C), 1 / 2)
     return C
 end
 
@@ -264,158 +257,3 @@ function selupd_impl!(C::SparseMatrixCSC, A::AbstractMatrix, B::AbstractMatrix, 
     return C
 end
 
-function ensureuplo(A::SparseMatrixCSC, tB::Val{TB}, src::Char, tgt::Char) where TB
-    if src == tgt
-        return A
-    elseif TB === :N
-        return copy(transpose(A))
-    else
-        return copy(adjoint(A))
-    end
-end
-
-function selaxpby!(α, B, β, A::AdjSparse)
-    selaxpby!(α, adjoint(B), conj(β), adjoint(A))
-    return A
-end
-
-function selaxpby!(α, B, β, A::TransSparse)
-    selaxpby!(α, transpose(B), β, transpose(A))
-    return A
-end
-
-function selaxpby!(α, B::MaybeAdjOrTransOrConjSparse, β, A::SparseMatrixCSC)
-    BP, tB, cB = unwrap(B)
-    selaxpby_rec_rec!(α, BP, tB, cB, β, A)
-    return A
-end
-
-function selaxpby!(α, B::HermOrSymOrConjSparse, β, A::SparseMatrixCSC)
-    BP, tB, cB, uB = unwrapsym(B)
-    selaxpby_sym_rec!(α, BP, tB, cB, uB, β, A)
-    return A
-end
-
-function selaxpby!(α, B::MaybeAdjOrTransOrConjSparse, β, A::HermOrSymSparse)
-    BP, tB, cB = unwrap(B)
-    AP, tA, cA, uA = unwrapsym(A)
-    selaxpby_rec_sym!(α, BP, tB, cB, β, AP, tA, cA, uA)
-    return A
-end
-
-function selaxpby!(α, B::HermOrSymOrConjSparse, β, A::HermOrSymSparse)
-    BP, tB, cB, uB = unwrapsym(B)
-    AP, tA, cA, uA = unwrapsym(A)
-    selaxpby_sym_sym!(α, BP, tB, cB, uB, β, AP, tA, cA, uA)
-    return A
-end
-
-function selaxpby_rec_rec!(α, B, tB::Val{TB}, cB, β, A) where TB
-    if TB === :T
-        B = copy(transpose(B))
-    end
-
-    selaxpby_impl!(α, B, β, A, cB, cB)
-    return A
-end
-
-function selaxpby_sym_rec!(α, B, tB::Val{TB}, cB, uB, β, A) where TB
-    BL = ensureuplo(B, tB, uB, 'L')
-    BU = ensureuplo(B, tB, uB, 'U')
-
-    if TB === :C
-        dB = Val(:R)
-    else
-        dB = cB
-    end
-
-    selaxpby_impl!(α, BL, β,    A, cB, dB,      'L')
-    selaxpby_impl!(α, BU, true, A, cB, Val(:U), 'U')
-    return A
-end
-
-function selaxpby_rec_sym!(α, B, tB::Val{TB}, cB, β, A, tA::Val{TA}, cA, uA) where {TB, TA}
-    if TA === :N || TB === :N
-        cX = cB
-    else
-        cX = cflip(cB)
-    end
-
-    if TA === :N
-        BT = copy(transpose(B))
-    else
-        BT = copy(adjoint(B))
-    end
-
-    selaxpby_impl!(α / 2, B,  β,    A, cX, cX, uA)
-    selaxpby_impl!(α / 2, BT, true, A, cX, cX, uA)
-    return A
-end
-
-function selaxpby_sym_sym!(α, B, tB::Val{TB}, cB, uB, β, A, tA::Val{TA}, cA, uA) where {TB, TA}
-    B = ensureuplo(B, tB, uB, uA)
-
-    if TA === TB
-        cX = cB
-
-        if TA === :N
-            dX = cB
-        else
-            dX = Val(:N)
-        end
-    else
-        cX = Val(:R)
-        dX = Val(:R)
-    end
-
-    selaxpby_impl!(α, B, β, A, cX, dX, uA)
-    return A
-end
-
-function selaxpby_impl!(α, B::SparseMatrixCSC{TB, IB}, β, A::SparseMatrixCSC{TA, IA}, cB::Val{CB}, dB::Val{DB}, uplo=nothing) where {TA, IA, TB, IB, CB, DB}
-    @assert size(B) == size(A)
-
-    @inbounds for j in axes(A, 2)
-        pa, pastop = getcolptr(A)[j], getcolptr(A)[j + 1] - one(IA)
-        pb, pbstop = getcolptr(B)[j], getcolptr(B)[j + 1] - one(IB)
-
-        while pa <= pastop && pb <= pbstop
-            ia, ib = rowvals(A)[pa], rowvals(B)[pb]
-
-            if ia == ib
-                if intriangle(uplo, ia, j)
-                    if ia == j
-                        XB = DB
-                    else
-                        XB = CB
-                    end
-
-                    if XB !== :U
-                        Bij = nonzeros(B)[pb]
-
-                        if XB === :C
-                            Bij = conj(Bij)
-                        elseif XB === :R
-                            Bij = real(Bij)
-                        end 
-
-                        if iszero(β)
-                            nonzeros(A)[pa] = α * Bij
-                        else
-                            nonzeros(A)[pa] = α * Bij + β * nonzeros(A)[pa]
-                        end
-                    end
-                end
-
-                pa += one(IA)
-                pb += one(IB)
-            elseif ia < ib
-                pa += one(IA)
-            else
-                pb += one(IB)
-            end
-        end
-    end
-
-    return A
-end

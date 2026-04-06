@@ -40,7 +40,20 @@ function maybefriendly(x, g)
     if g isa Tangent
         return toarray(x, g)
     end
+
     return g
+end
+
+function flat(A)
+    return A
+end
+
+function flat(A::Union{Symmetric, Hermitian, Adjoint, Transpose})
+    return flat(parent(A))
+end
+
+function dotflat(A, B)
+    return dot(flat(A), flat(B))
 end
 
 function testadjoint(f, args...; rtol=1e-4)
@@ -56,7 +69,7 @@ function testadjoint(f, args...; rtol=1e-4)
     _, (_, gradients...) = value_and_gradient!!(rev_cache, f, args...)
 
     arrays = map(maybefriendly, args, gradients)
-    return isapprox(dy, sum(real ∘ splat(dot), zip(arrays, tangents)); rtol)
+    return isapprox(dy, sum(real ∘ splat(dotflat), zip(arrays, tangents)); rtol)
 end
 
 n = 100
@@ -91,18 +104,6 @@ p = 0.3
             @testset "dot (3-arg)" begin
                 for A in (AU, AU', transpose(AU), transpose(AU)', AH, AS, transpose(AH), AS')
                     @test testadjoint((x, A, y) -> real(dot(x, A, y)), x, A, y)
-                end
-            end
-
-            @testset "dot (2-arg)" begin
-                BU = sprandn(T, n, n, p)
-                BH = Hermitian(BU, :L)
-                BS = Symmetric(BU, :L)
-
-                for L in (AU, AU', transpose(AU), AH, AS)
-                    for R in (AU, AU', transpose(AU), AH, AS)
-                        @test testadjoint((L, R) -> real(dot(L, R)), L, R)
-                    end
                 end
             end
 

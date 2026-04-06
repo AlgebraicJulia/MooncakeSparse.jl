@@ -8,6 +8,8 @@ using LinearAlgebra: Hermitian, Symmetric, Adjoint, Transpose, AdjOrTrans, rmul!
 using SparseArrays
 using SparseArrays: SparseMatrixCSC, nzrange, rowvals, getcolptr, nonzeros
 
+using Base.Order: Forward
+
 using Mooncake
 using Mooncake: @is_primitive, MinimalCtx, CoDual, Dual, NoRData, NoFData, primal, tangent,
                 Tangent, FData, FriendlyTangentCache, AsCustomised,

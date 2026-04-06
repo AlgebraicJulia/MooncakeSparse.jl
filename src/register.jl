@@ -16,12 +16,6 @@ for SL in SPARSE_MATRIX_TYPES
     @eval Mooncake.frule!!(::Dual{typeof(mul!)}, cdC::Dual{<:DenseMatrix}, cdA::Dual{<:DenseMatrix}, cdB::Dual{<:$SL}) = rmul_fwd_impl!!(cdC, cdA, cdB)
     @eval Mooncake.rrule!!(::CoDual{typeof(mul!)}, cdC::CoDual{<:DenseMatrix}, cdA::CoDual{<:DenseMatrix}, cdB::CoDual{<:$SL}) = rmul_rev_impl!!(cdC, cdA, cdB)
 
-    for SR in SPARSE_MATRIX_TYPES
-        @eval @is_primitive MinimalCtx Tuple{typeof(dot), $SL{T, I}, $SR{T, I}} where {T, I}
-        @eval Mooncake.frule!!(::Dual{typeof(dot)}, cdA::Dual{<:$SL}, cdB::Dual{<:$SR}) = dot_fwd_impl!!(cdA, cdB)
-        @eval Mooncake.rrule!!(::CoDual{typeof(dot)}, cdA::CoDual{<:$SL}, cdB::CoDual{<:$SR}) = dot_rev_impl!!(cdA, cdB)
-    end
-
     @eval @is_primitive MinimalCtx Tuple{typeof(ldivwith!), $SL, <:Any, AbstractVecOrMat}
     @eval Mooncake.frule!!(::Dual{typeof(ldivwith!)}, cdA::Dual{<:$SL}, cdF::Dual, cdX::Dual{<:AbstractVecOrMat}) = ldiv_fwd_impl!!(cdA, cdF, cdX)
     @eval Mooncake.rrule!!(::CoDual{typeof(ldivwith!)}, cdA::CoDual{<:$SL}, cdF::CoDual, cdX::CoDual{<:AbstractVecOrMat}) = ldiv_rev_impl!!(cdA, cdF, cdX)
