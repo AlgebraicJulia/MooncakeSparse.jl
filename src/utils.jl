@@ -89,17 +89,8 @@ function unwrap(A::Adjoint, tA::Val, cA::Val)
     return unwrap(A', tflip(tA), cflip(cA))
 end
 
-function intriangle(uplo, i::Integer, j::Integer)
-    return isnothing(uplo) || (uplo == 'L' && i >= j) || (uplo == 'U' && i <= j)
-end
-
-# SCaLe DIAgonal: scale diagonal entries by α
-function scldia!(A::SparseMatrixCSC, α)
-    for i in diagind(A)
-        A[i] *= α
-    end
-
-    return A
+function intriangle(uplo::Char, i::Integer, j::Integer)
+    return (uplo == 'L' && i >= j) || (uplo == 'U' && i <= j)
 end
 
 # SELected UPDate: compute the selected low-rank update
@@ -110,7 +101,6 @@ end
 function selupd!(C::HermSparse, A::AbstractVecOrMat, B::AbstractVecOrMat, α, β)
     selupd!(parent(C), C.uplo,         A,          B,       α, β)
     selupd!(parent(C), C.uplo, adjoint(B), adjoint(A), conj(α), true)
-    scldia!(parent(C), 1 / 2)
     return C
 end
 
@@ -127,7 +117,6 @@ end
 function selupd!(C::SymSparse, A::AbstractVecOrMat, B::AbstractVecOrMat, α, β)
     selupd!(parent(C), C.uplo,           A,            B,  α, β)
     selupd!(parent(C), C.uplo, transpose(B), transpose(A), α, true)
-    scldia!(parent(C), 1 / 2)
     return C
 end
 
@@ -173,7 +162,37 @@ function selupd!(C::ConjSparse, A::AbstractVecOrMat, B::AbstractVecOrMat, α, β
     return C
 end
 
-function selupd_impl!(C::SparseMatrixCSC, A::AbstractVector, B::AbstractVector, α, β, ::Val{tA}, ::Val{cA}, ::Val{tB}, ::Val{cB}, uplo=nothing) where {tA, cA, tB, cB}
+function selupd_impl!(C::SparseMatrixCSC, A::AbstractVector, B::AbstractVector, α, β, ::Val{tA}, ::Val{cA}, ::Val{tB}, ::Val{cB}) where {tA, cA, tB, cB}
+    @assert size(C, 1) == size(C, 2) == length(A) == length(B)
+
+    @inbounds for j in axes(C, 2)
+        if cB === :C
+            Bj = conj(B[j])
+        else
+            Bj = B[j]
+        end
+
+        for p in nzrange(C, j)
+            i = rowvals(C)[p]
+
+            if cA === :C
+                Ai = conj(A[i])
+            else
+                Ai = A[i]
+            end
+
+            if iszero(β)
+                nonzeros(C)[p] = α * Ai * Bj
+            else
+                nonzeros(C)[p] = β * nonzeros(C)[p] + α * Ai * Bj
+            end
+        end
+    end
+
+    return C
+end
+
+function selupd_impl!(C::SparseMatrixCSC, A::AbstractVector, B::AbstractVector, α, β, ::Val{tA}, ::Val{cA}, ::Val{tB}, ::Val{cB}, uplo::Char) where {tA, cA, tB, cB}
     @assert size(C, 1) == size(C, 2) == length(A) == length(B)
 
     @inbounds for j in axes(C, 2)
@@ -187,6 +206,12 @@ function selupd_impl!(C::SparseMatrixCSC, A::AbstractVector, B::AbstractVector, 
             i = rowvals(C)[p]
 
             if intriangle(uplo, i, j)
+                if i == j
+                    γ = α / 2
+                else
+                    γ = α
+                end  
+
                 if cA === :C
                     Ai = conj(A[i])
                 else
@@ -194,9 +219,9 @@ function selupd_impl!(C::SparseMatrixCSC, A::AbstractVector, B::AbstractVector, 
                 end
 
                 if iszero(β)
-                    nonzeros(C)[p] = α * Ai * Bj
+                    nonzeros(C)[p] = γ * Ai * Bj
                 else
-                    nonzeros(C)[p] = β * nonzeros(C)[p] + α * Ai * Bj
+                    nonzeros(C)[p] = β * nonzeros(C)[p] + γ * Ai * Bj
                 end
             end
         end
@@ -205,7 +230,7 @@ function selupd_impl!(C::SparseMatrixCSC, A::AbstractVector, B::AbstractVector, 
     return C
 end
 
-function selupd_impl!(C::SparseMatrixCSC, A::AbstractMatrix, B::AbstractMatrix, α, β, tA::Val{TA}, cA::Val{CA}, tB::Val{TB}, cB::Val{CB}, uplo=nothing) where {TA, CA, TB, CB}
+function selupd_impl!(C::SparseMatrixCSC, A::AbstractMatrix, B::AbstractMatrix, α, β, tA::Val{TA}, cA::Val{CA}, tB::Val{TB}, cB::Val{CB}, args...) where {TA, CA, TB, CB}
     @assert size(C, 1) == size(C, 2)
 
     if TA === :N && TB === :N
@@ -251,7 +276,7 @@ function selupd_impl!(C::SparseMatrixCSC, A::AbstractMatrix, B::AbstractMatrix, 
             Bk = view(B, :, k)
         end
 
-        selupd_impl!(C, Ak, Bk, α, true, tA, cA, tB, cB, uplo)
+        selupd_impl!(C, Ak, Bk, α, true, tA, cA, tB, cB, args...)
     end
 
     return C
