@@ -2,7 +2,7 @@ name = "MooncakeSparse"
 uuid = "85e08d05-c593-4d83-8d7e-0e912d511203"
 license = "MIT"
 authors = ["Richard Samuelson <rsamuelson@ufl.edu>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
